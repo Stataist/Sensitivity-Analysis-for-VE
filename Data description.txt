@@ -1,0 +1,44 @@
+______________________________________________________________________________________________
+Vaccination data
+______________________________________________________________________________________________
+
+"COVID-19 Vaccinations in the United States,County" from CDC.
+
+https://data.cdc.gov/Vaccinations/COVID-19-Vaccinations-in-the-United-States-County/8xkx-amqh
+
+
+______________________________________________________________________________________________
+Cases data
+_____________________________________________________________________________________________
+
+"United States COVID-19 County Level of Community Transmission Historical Changes" from CDC.
+
+https://data.cdc.gov/Public-Health-Surveillance/United-States-COVID-19-County-Level-of-Community-T/nra9-vzzn
+
+______________________________________________________________________________________________
+Deaths data
+_____________________________________________________________________________________________
+
+"Provisional COVID-19 Death Counts in the United States by County" from CDC. Several iterations
+from from different dates using wayback machine.
+
+https://data.cdc.gov/NCHS/Provisional-COVID-19-Death-Counts-in-the-United-St/kn79-hsxy
+
+
+______________________________________________________________________________________________
+Age data
+______________________________________________________________________________________________
+
+"Annual County and Resident Population Estimates by Selected Age Groups and Sex: April 1, 
+2010 to July 1, 2019 (CC-EST2019-AGESEX)" from Census.
+
+https://www.census.gov/data/tables/time-series/demo/popest/2010s-counties-detail.html
+
+
+______________________________________________________________________________________________
+Landmass data
+______________________________________________________________________________________________
+
+"LND01" from Census USA Counties: 2011.
+
+https://www.census.gov/library/publications/2011/compendia/usa-counties-2011.html
