@@ -9,7 +9,7 @@ https://data.cdc.gov/Vaccinations/COVID-19-Vaccinations-in-the-United-States-Cou
 
 ______________________________________________________________________________________________
 Cases data
-_____________________________________________________________________________________________
+______________________________________________________________________________________________
 
 "United States COVID-19 County Level of Community Transmission Historical Changes" from CDC.
 
@@ -17,7 +17,7 @@ https://data.cdc.gov/Public-Health-Surveillance/United-States-COVID-19-County-Le
 
 ______________________________________________________________________________________________
 Deaths data
-_____________________________________________________________________________________________
+______________________________________________________________________________________________
 
 "Provisional COVID-19 Death Counts in the United States by County" from CDC. Several iterations
 from from different dates using wayback machine.
