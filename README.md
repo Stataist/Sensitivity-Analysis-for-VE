@@ -1,4 +1,4 @@
-# Run Project.py file in IDE to print plots and analyses. Run ExcessDeaths to print excess deaths plots.
+# Run Project.py file in IDE to print plots and analyses. Run ExcessDeaths to print excess deaths plots. Excess deaths are by state.
 
 # Current plots from 10/23/2021 - 01/02/2022. Excess deaths from Q3 2021. Excess deaths heavily imputed. 
 
