@@ -2,6 +2,6 @@
 
 # Current plots from 10/23/2021 - 01/02/2022. Excess deaths from Q3 2021. Excess deaths heavily inputed. 
 
-Excess deaths interpretation:
+Excess deaths interpretation.
 Y1 := compared to 2020.
 BP := compared to before pandemic, 2016-2019.
