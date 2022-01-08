@@ -1,3 +1,3 @@
-# Run Project.py file in IDE to print plots and analyses.
+# Run Project.py file in IDE to print plots and analyses. Run ExcessDeaths to print excess deaths plots.
 
-# AgeData.py combines the state based age data to one dataset.
+# Current plots from 10/23/2021 - 02/01/2022. Excess deaths from Q3 2021. Excess deaths heavily inputed.
