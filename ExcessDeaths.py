@@ -174,8 +174,8 @@ plt.savefig("Plots/ExcessDeaths/Excess0-65Y1.png",bbox_inches="tight")
 
 plt.figure()
 sns.regplot(dataTable["Series_Complete_Pop_Pct"],dataTable["ExcessOtherBP"],line_kws={'lw': 1.5, 'color': 'red'},lowess=True)
-plt.savefig("Plots/ExcessDeaths/Excess0-65BP.png",bbox_inches="tight")
+plt.savefig("Plots/ExcessDeaths/ExcessOtherBP.png",bbox_inches="tight")
 plt.figure()
 sns.regplot(dataTable["Series_Complete_Pop_Pct"],dataTable["ExcessOtherY1"],line_kws={'lw': 1.5, 'color': 'red'},lowess=True)
-plt.savefig("Plots/ExcessDeaths/Excess0-65Y1.png",bbox_inches="tight")
+plt.savefig("Plots/ExcessDeaths/ExcessOtherY1.png",bbox_inches="tight")
 
