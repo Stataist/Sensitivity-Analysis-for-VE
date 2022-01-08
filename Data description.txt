@@ -20,7 +20,7 @@ Deaths data
 ______________________________________________________________________________________________
 
 "Provisional COVID-19 Death Counts in the United States by County" from CDC. Several iterations
-from from different dates using wayback machine.
+from different dates using wayback machine.
 
 https://data.cdc.gov/NCHS/Provisional-COVID-19-Death-Counts-in-the-United-St/kn79-hsxy
 
@@ -42,3 +42,11 @@ ________________________________________________________________________________
 "LND01" from Census USA Counties: 2011.
 
 https://www.census.gov/library/publications/2011/compendia/usa-counties-2011.html
+
+
+
+______________________________________________________________________________________________
+Other data
+______________________________________________________________________________________________
+
+Search CDC https://data.cdc.gov/ with the dataset name.

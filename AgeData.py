@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Dec 18 17:32:18 2021
-
-@author: User
-"""
-
 #Creates combined Ages data series from each individual state data file to "Ages.csv".
 import pandas
 
