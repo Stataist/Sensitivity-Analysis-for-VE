@@ -162,7 +162,7 @@ dataTable["ExcessOtherY1"]=(dataTable["Total Deaths"]-dataTable[dataTable.column
 sns.set_theme(color_codes=True,style='darkgrid', palette='deep')
 for i in range(13+13+6+6+3+2):
     sns.regplot(dataTable["Series_Complete_Pop_Pct"],dataTable[dataTable.columns[i+148]],line_kws={'lw': 1.5, 'color': 'red'},lowess=True)
-    plt.savefig("Plots/ExcessDeaths/"+dataTable.columns[i+147]+".png",bbox_inches="tight")
+    plt.savefig("Plots/ExcessDeaths/"+dataTable.columns[i+148]+".png",bbox_inches="tight")
     plt.figure()
 
 dataTable["Full Vaccination 65 Below"]=(dataTable["Series_Complete_Yes"]-dataTable["Series_Complete_65Plus"])/(dataTable["Population"]-dataTable["Population65+"])
@@ -178,4 +178,3 @@ plt.savefig("Plots/ExcessDeaths/ExcessOtherBP.png",bbox_inches="tight")
 plt.figure()
 sns.regplot(dataTable["Series_Complete_Pop_Pct"],dataTable["ExcessOtherY1"],line_kws={'lw': 1.5, 'color': 'red'},lowess=True)
 plt.savefig("Plots/ExcessDeaths/ExcessOtherY1.png",bbox_inches="tight")
-
