@@ -8,8 +8,8 @@ from operator import add
 start_date="2021-06-01"
 end_date="2021-09-05"
 
-start_dateC = "2021-06-01"   #Start and end dates of the comparison period (lagged). (i.e. set 2021-01-01, 2021-12-31 to compare to the period of full year.)
-end_dateC = "2021-09-05"
+start_dateC = start_date   #Start and end dates of the comparison period (lagged). (i.e. set 2021-01-01, 2021-12-31 to compare to the period of full year.)
+end_dateC = end_date
 
 Mode="Aggregate" #Choose aggregate or pool. Aggregate := all weeks in the period are summed together. Pool := all weeks/months are pooled for plotting.
 
@@ -256,9 +256,10 @@ dataTableM["Full Vaccination 65 Below"]=(dataTableM["Series_Complete_Yes"]-dataT
 dataTableM["Full Vaccination 18-65"]=(dataTableM["Series_Complete_18Plus"]-dataTableM["Series_Complete_65Plus"])/(dataTableM["Population18+"]-dataTableM["Population65+"])
 dataTableM["Full Vaccination 0-18"]=(dataTableM["Series_Complete_Yes"]-dataTableM["Series_Complete_18Plus"])/(dataTableM["Population"]-dataTableM["Population18+"])
 
-for i in range(28):
+for i in range(27):
+    print(dataTableM.columns[i+139])
     sns.regplot(dataTableM["Series_Complete_Pop_Pct"],dataTableM[dataTableM.columns[i+139]],line_kws={'lw': 1.5, 'color': 'red'},lowess=True)
-    plt.savefig("Plots/ExcessDeaths/"+dataTable.columns[i+148]+".png",bbox_inches="tight")
+    plt.savefig("Plots/ExcessDeaths/"+dataTableM.columns[i+139]+".png",bbox_inches="tight")
     plt.figure()
     
 A=["Full Vaccination 18-65","Full Vaccination 18-65","Full Vaccination 18-65","Series_Complete_65PlusPop_Pct","Series_Complete_65PlusPop_Pct","Series_Complete_65PlusPop_Pct","Full Vaccination 0-18","Full Vaccination 0-18","Full Vaccination 0-18"]
