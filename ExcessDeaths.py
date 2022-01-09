@@ -3,17 +3,24 @@ import seaborn as sns
 import pandas
 import matplotlib.pyplot as plt
 import sklearn.impute
+from operator import add 
 
 start_date="2021-06-01"
 end_date="2021-09-05"
-Mode="Aggregate" #Choose aggregate or pool. Aggregate := all weeks in the period are summed together. Pool := all weeks are pooled for regression.
 
+start_dateC = "2021-06-01"   #Start and end dates of the comparison period (lagged). (i.e. set 2021-01-01, 2021-12-31 to compare to the period of full year.)
+end_dateC = "2021-09-05"
+
+Mode="Aggregate" #Choose aggregate or pool. Aggregate := all weeks in the period are summed together. Pool := all weeks/months are pooled for plotting.
 
 #Load data:
+#Weekly:
 data1 = pandas.read_csv("Data/COVID-19_Vaccinations_in_the_United_States_Jurisdiction.csv")
 data2 = pandas.read_csv("Data/Provisional_COVID-19_Death_Counts_by_Week_Ending_Date_and_State.csv")
 data3 = pandas.read_csv("Data/Weekly_Counts_of_Death_by_Jurisdiction_and_Select_Causes_of_Death.csv")
 data4 = pandas.read_csv("Data/Weekly_Counts_of_Deaths_by_Jurisdiction_and_Age.csv")
+
+#Monthly:
 data5 = pandas.read_csv("Data/Provisional_COVID-19_Deaths_by_Place_of_Death_and_Age.csv")
 
 
@@ -33,12 +40,11 @@ data1["State"]=data1["Location"].replace(dict(zip(A, B)))
 #Edit data 2 : Covid and non-covid deaths.
 data2=data2[data2["Group"]=="By Week"]
 data2["Date"]=pandas.to_datetime(data2["End Date"])
-data2["Non-Covid Deaths"]=data2["Total Deaths"]-data2["COVID-19 Deaths"].fillna(0)
 data2=data2.sort_values(["State","Date"]).reset_index(drop=True)
 data2=data2.set_index('Date')
 data2=data2.groupby("State",as_index=False).resample('W').first().reset_index(drop=False)
 data2["State"] = data2.groupby('level_0')['State'].transform('first')
-data2=data2[["Date","State","Total Deaths","COVID-19 Deaths","Non-Covid Deaths"]]
+data2=data2[["Date","State","Total Deaths","COVID-19 Deaths"]]
 
 
 #Edit data 3 : Cause of death.
@@ -66,16 +72,29 @@ data4["State"] = data4.groupby('level_0')['State'].transform('first')
 data4["Age Group"] = data4.groupby('level_0')['Age Group'].transform('first')
 
 
-#Reshape:
-dataTable=data3.pivot_table(index=["State","Date"],columns="Cause Subgroup",values=["Deaths"])
-dataTable=dataTable.reset_index()
-D=data4.pivot_table(index=["State","Date"],columns="Age Group",values=["Deaths"])
-D=D.reset_index()
+#Edit data 5 : Deaths by age (monthly).
+data5 = data5[data5["Place of Death"]=="Total - All Places of Death"]
+data5 = data5.drop("Place of Death",axis=1)
+data5 = data5[data5["Group"]=="By Month"]
+data5["Date"]=pandas.to_datetime(data5["End Date"])
+data5 = data5.sort_values(["State","Age group","Date"]).reset_index(drop=True)
+data5=data5[["Date","State","Age group","Total Deaths","COVID-19 Deaths"]]
+
+
+#Reshape to wide form:
+dataTable=data3.pivot_table(index=["State","Date"],columns="Cause Subgroup",values=["Deaths"]).reset_index()
+D=data4.pivot_table(index=["State","Date"],columns="Age Group",values=["Deaths"]).reset_index()
+S=["Total Deaths","COVID-19 Deaths"]
+df=pandas.DataFrame()
+for i in range(len(S)):
+    df=pandas.concat([df,data5.pivot_table(index=["State","Date"],columns="Age group",values=[S[i]])],axis=1)
+data5=df.reset_index()
 
 
 #Missing data:
 #Impute:    
-def impute(data,IDVar,n=10): 
+def impute(data,IDVar,n=10,Min=1,Max=0): 
+    df=data.isnull().iloc[:,2:]
     imputer=sklearn.impute.KNNImputer(n_neighbors=n)
     data["Cost"]=numpy.arange(len(data))
     for i in range(len(data.columns)-3):
@@ -83,11 +102,19 @@ def impute(data,IDVar,n=10):
                 if data[data[IDVar]==data[IDVar].unique()[j]][data.columns[[i+2]]].isna().all()[0]==False:
                     data.loc[data[IDVar]==data[IDVar].unique()[j],data.columns[i+2]]=imputer.fit_transform(data[data[IDVar]==data[IDVar].unique()[j]][data.columns[[data.shape[1]-1,i+2]]])[:,1]
     data = data.drop("Cost", axis = 1)
+    if Min<Max:
+        data.iloc[:,2:]=numpy.minimum(numpy.maximum(data.iloc[:,2:],Min),Max)*df+(1-df)*data.iloc[:,2:]
     return data
 
 dataTable=impute(dataTable,"State")
 D=impute(D,"State")
-data2=impute(data2,"State",4)
+data2=impute(data2,"State",4,1,9)
+data5=impute(data5,"State",4,1,9)
+
+
+#Create non-covid deaths variable:
+data2["Non-Covid Deaths"]=data2["Total Deaths"]-data2["COVID-19 Deaths"]
+data5[list(zip(["Non-Covid Deaths",]*9,list(zip(*data5.columns[2:11]))[1]))]=data5["Total Deaths"]-data5["COVID-19 Deaths"]
 
 
 #Lagged vars:
@@ -110,6 +137,7 @@ L=D.shape[1]-2
 D=lags(D,"State",l0,"BP",L)
 D=lags(D,"State",l1,"Y1",L)
 data2[["Total DeathsY1","COVID-19 DeathsY1","Non-Covid DeathsY1"]]=data2[["State","Total Deaths","COVID-19 Deaths","Non-Covid Deaths"]].groupby("State").shift(52)[["Total Deaths","COVID-19 Deaths","Non-Covid Deaths"]]
+data5[list(zip(list(map(add, list(zip(*data5.columns[2:len(data5.columns)]))[0], ["Y1M"]*(len(data5.columns)-1))),list(zip(*data5.columns[2:len(data5.columns)]))[1]))]=data5.groupby("State").shift(12)[data5.columns[2:len(data5.columns)]]
 
 
 #Merge:
@@ -117,26 +145,54 @@ dataTable = dataTable.merge(D,how="outer",on=["State","Date"])
 dataTable = dataTable.merge(data2,how="outer", on=["State","Date"]).reset_index(drop=True)
 dataTable = dataTable.drop(dataTable.columns[[2,3]],axis=1)
 
+
+#Level:
+def levelC(data,mode=0):
+    dataC=data[(pandas.to_datetime(start_dateC)<=data["Date"]) & (data["Date"]<=pandas.to_datetime(end_dateC))].reset_index(drop=True)
+    data=data[(pandas.to_datetime(start_date)<=data["Date"]) & (data["Date"]<=pandas.to_datetime(end_date))].reset_index(drop=True)
+    C=data["Date"].count()/dataC["Date"].count()
+    if mode==0:
+        data=data.groupby(["State"],as_index=False).sum()
+        dataC=dataC.groupby(["State"],as_index=False).sum()
+    cols= [i for i in range(len(list(zip(*data.columns))[0])) if ('Y1' in list(zip(*data.columns))[0][i] or "BP" in list(zip(*data.columns))[0][i])]
+    dataC.iloc[:,cols] = dataC.iloc[:,cols] * C
+    data.iloc[:,cols] = dataC.iloc[:,cols]
+    return data.reset_index(drop=True)
+
 if Mode == "Aggregate":
-    dataTable=dataTable[(start_date<=dataTable["Date"]) & (dataTable["Date"]<=end_date)].reset_index(drop=True)
-    dataTable=dataTable.groupby(["State"],as_index=False).sum() 
-    
+#Weekly table:
+    dataTable=levelC(dataTable)
     DV=data1[(start_date<=data1["Date"]) & (data1["Date"]<=end_date)].reset_index(drop=True)
     DV=data1.groupby(["State"],as_index=False).last()  
+    dataTable=dataTable.merge(DV,on=["State"]).reset_index(drop=True)
     
-    dataTable=dataTable.merge(DV,on=["State"]).reset_index(drop=True) 
+#Monthly table:
+    dataTableM=levelC(data5)
+    dataTableM=data5[(start_date<=data5["Date"]) & (data5["Date"]<=end_date)].reset_index(drop=True)
+    dataTableM=dataTableM.groupby(["State"],as_index=False).sum()
+    dataTableM=dataTableM.merge(DV,on=["State"]).reset_index(drop=True)
+    dataTableM=dataTableM.drop(dataTableM.columns[[1]],axis=1)
 
 if Mode == "Pool":
-    dataTable=dataTable.merge(data1,on=["State","Date"]).reset_index(drop=True)
-    dataTable=dataTable[(start_date<=dataTable["Date"]) & (dataTable["Date"]<=end_date)].reset_index(drop=True)
-    dataTable=dataTable.set_index("Date")
+#Weekly table:
+    dataTable=levelC(dataTable,1)
+    DV=data1[(start_date<=data1["Date"]) & (data1["Date"]<=end_date)].reset_index(drop=True)
+    dataTable=dataTable.merge(DV,on=["Date","State"]).reset_index(drop=True)
 
+#Monthly table:
+    dataTableM=levelC(data5,1)
+    dataTableM=dataTableM.sort_values(["Date","State"]).reset_index(drop=True)
+    DV=DV.sort_values(["Date","State"]).reset_index(drop=True)
+    dataTableM = pandas.merge_asof(dataTableM,DV,on=["Date"],by=["State"],direction="nearest").reset_index(drop=True) 
+    dataTableM=dataTableM.sort_values(["State","Date"]).reset_index(drop=True).set_index("Date").drop(dataTableM.columns[[2,3]],axis=1)
+    DV=DV.sort_values(["State","Date"]).reset_index(drop=True)
 
-#for i in range(70):
-#    print(i,dataTable.columns[i])
+#for i in range(60):
+#    print(i,dataTableM.columns[i])
 
 
 #Compute Excess Deaths:
+#Weekly:
 for i in range(1,14):
     dataTable["Excess " + str(dataTable.columns[i+13])]=dataTable[dataTable.columns[i]]/dataTable[dataTable.columns[i+13]]-1
 for i in range(1,14):
@@ -158,23 +214,57 @@ dataTable["ExcessOtherBP"]=(dataTable["Total Deaths"]-dataTable[dataTable.column
 dataTable["ExcessOtherY1"]=(dataTable["Total Deaths"]-dataTable[dataTable.columns[1:14]].sum(axis=1))/(dataTable["Total DeathsY1"]-dataTable[dataTable.columns[27:40]].sum(axis=1))-1
 
 
+#Monthly:
+for i in range(27):
+    dataTableM["Excess " + str(dataTableM.columns[i+28])] = dataTableM[dataTableM.columns[i+1]]/dataTableM[dataTableM.columns[i+28]]-1
+
+
+dataTableM["Excess Total 18-65 Y1M"] = (dataTableM[dataTableM.columns[9]]-dataTableM[dataTableM.columns[[1,6,7,8]]].sum(axis=1)) / (dataTableM[dataTableM.columns[9+27]]-dataTableM[dataTableM.columns[[1+27,6+27,7+27,8+27]]].sum(axis=1))-1
+dataTableM["Excess Covid 18-65 Y1M"] = (dataTableM[dataTableM.columns[18]]-dataTableM[dataTableM.columns[[10,15,16,17]]].sum(axis=1) )/ (dataTableM[dataTableM.columns[18+27]]-dataTableM[dataTableM.columns[[10+27,15+27,16+27,17+27]]].sum(axis=1))-1
+dataTableM["Excess Non-Covid 18-65 Y1M"] = (dataTableM[dataTableM.columns[27]]-dataTableM[dataTableM.columns[[19,24,25,26]]].sum(axis=1) )/ (dataTableM[dataTableM.columns[27+27]]-dataTableM[dataTableM.columns[[19+27,24+27,25+27,26+27]]].sum(axis=1))-1
+
+dataTableM["Excess Total 65+ Y1M"] = dataTableM[dataTableM.columns[[6,7,8]]].sum(axis=1)/dataTableM[dataTableM.columns[[6+27,7+27,8+27]]].sum(axis=1)-1
+dataTableM["Excess Covid 65+ Y1M"] = dataTableM[dataTableM.columns[[15,16,17]]].sum(axis=1)/dataTableM[dataTableM.columns[[15+27,16+27,17+27]]].sum(axis=1)-1
+dataTableM["Excess Non-Covid 65+ Y1M"] = dataTableM[dataTableM.columns[[24,25,26]]].sum(axis=1)/dataTableM[dataTableM.columns[[24+27,25+27,26+27]]].sum(axis=1)-1
+
+dataTableM["Excess Total 0-18 Y1M"] = dataTableM[dataTableM.columns[[1]]].sum(axis=1)/dataTableM[dataTableM.columns[[1+27]]].sum(axis=1)-1
+dataTableM["Excess Covid 0-18 Y1M"] = dataTableM[dataTableM.columns[[10]]].sum(axis=1)/dataTableM[dataTableM.columns[[10+27]]].sum(axis=1)-1
+dataTableM["Excess Non-Covid 0-18 Y1M"] = dataTableM[dataTableM.columns[[19]]].sum(axis=1)/dataTableM[dataTableM.columns[[19+27]]].sum(axis=1)-1
+
+
+
 #Plot and save:
+#Based on weekly:
+dataTable["Full Vaccination 65 Below"]=(dataTable["Series_Complete_Yes"]-dataTable["Series_Complete_65Plus"])/(dataTable["Population"]-dataTable["Population65+"])
+dataTable["Full Vaccination 18-65"]=(dataTable["Series_Complete_18Plus"]-dataTable["Series_Complete_65Plus"])/(dataTable["Population"]-dataTable["Population65+"]-dataTable["Population18+"])    
 sns.set_theme(color_codes=True,style='darkgrid', palette='deep')
 for i in range(13+13+6+6+3+2):
     sns.regplot(dataTable["Series_Complete_Pop_Pct"],dataTable[dataTable.columns[i+148]],line_kws={'lw': 1.5, 'color': 'red'},lowess=True)
     plt.savefig("Plots/ExcessDeaths/"+dataTable.columns[i+148]+".png",bbox_inches="tight")
     plt.figure()
 
-dataTable["Full Vaccination 65 Below"]=(dataTable["Series_Complete_Yes"]-dataTable["Series_Complete_65Plus"])/(dataTable["Population"]-dataTable["Population65+"])
-sns.regplot(dataTable["Full Vaccination 65 Below"],dataTable["Excess0to65BP"],line_kws={'lw': 1.5, 'color': 'red'},lowess=True)
-plt.savefig("Plots/ExcessDeaths/Excess0-65BP.png",bbox_inches="tight")
-plt.figure()
-sns.regplot(dataTable["Full Vaccination 65 Below"],dataTable["Excess0to65Y1"],line_kws={'lw': 1.5, 'color': 'red'},lowess=True)
-plt.savefig("Plots/ExcessDeaths/Excess0-65Y1.png",bbox_inches="tight")
+A=["Full Vaccination 65 Below","Full Vaccination 65 Below","Series_Complete_Pop_Pct","Series_Complete_Pop_Pct"]
+B=["Excess0to65BP","Excess0to65Y1","ExcessOtherBP","ExcessOtherY1"]
+C=["Excess Full Vaccination Below 65 BP","Excess Full Vaccination Below 65 Y1","Excess Other Deaths BP","Excess Other Deaths Y1"]
+for i in range(len(A)):
+    sns.regplot(dataTable[A[i]],dataTable[B[i]],line_kws={'lw': 1.5, 'color': 'red'},lowess=True)
+    plt.savefig("Plots/ExcessDeaths/"+C[i]+".png",bbox_inches="tight")
+    plt.figure()
 
-plt.figure()
-sns.regplot(dataTable["Series_Complete_Pop_Pct"],dataTable["ExcessOtherBP"],line_kws={'lw': 1.5, 'color': 'red'},lowess=True)
-plt.savefig("Plots/ExcessDeaths/ExcessOtherBP.png",bbox_inches="tight")
-plt.figure()
-sns.regplot(dataTable["Series_Complete_Pop_Pct"],dataTable["ExcessOtherY1"],line_kws={'lw': 1.5, 'color': 'red'},lowess=True)
-plt.savefig("Plots/ExcessDeaths/ExcessOtherY1.png",bbox_inches="tight")
+#Based on monthly:
+dataTableM["Full Vaccination 65 Below"]=(dataTableM["Series_Complete_Yes"]-dataTableM["Series_Complete_65Plus"])/(dataTableM["Population"]-dataTableM["Population65+"])
+dataTableM["Full Vaccination 18-65"]=(dataTableM["Series_Complete_18Plus"]-dataTableM["Series_Complete_65Plus"])/(dataTableM["Population18+"]-dataTableM["Population65+"])
+dataTableM["Full Vaccination 0-18"]=(dataTableM["Series_Complete_Yes"]-dataTableM["Series_Complete_18Plus"])/(dataTableM["Population"]-dataTableM["Population18+"])
+
+for i in range(28):
+    sns.regplot(dataTableM["Series_Complete_Pop_Pct"],dataTableM[dataTableM.columns[i+139]],line_kws={'lw': 1.5, 'color': 'red'},lowess=True)
+    plt.savefig("Plots/ExcessDeaths/"+dataTable.columns[i+148]+".png",bbox_inches="tight")
+    plt.figure()
+    
+A=["Full Vaccination 18-65","Full Vaccination 18-65","Full Vaccination 18-65","Series_Complete_65PlusPop_Pct","Series_Complete_65PlusPop_Pct","Series_Complete_65PlusPop_Pct","Full Vaccination 0-18","Full Vaccination 0-18","Full Vaccination 0-18"]
+B=["Excess Total 18-65 Y1M","Excess Non-Covid 18-65 Y1M","Excess Covid 18-65 Y1M","Excess Total 65+ Y1M","Excess Non-Covid 65+ Y1M","Excess Covid 65+ Y1M","Excess Total 0-18 Y1M","Excess Non-Covid 0-18 Y1M","Excess Covid 0-18 Y1M"]
+C=["Excess Deaths 18-65 Y1M","Excess Non-Covid Deaths 18-65 Y1M","Excess Covid Deaths 18-65 Y1M","Excess Deaths 65Plus Y1M","Excess Non-Covid Deaths 65Plus Y1M","Excess Covid Deaths 65Plus Y1M","Excess Deaths 0-18 Y1M","Excess Non-Covid Deaths 0-18 Y1M","Excess Covid Deaths 0-18 Y1M"]
+for i in range(9):
+    sns.regplot(dataTableM[A[i]],dataTableM[B[i]],line_kws={'lw': 1.5, 'color': 'red'},lowess=True)
+    plt.savefig("Plots/ExcessDeaths/"+C[i]+".png",bbox_inches="tight")
+    plt.figure()
