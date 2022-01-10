@@ -8,10 +8,15 @@ from operator import add
 start_date="2021-06-01"
 end_date="2021-09-05"
 
-start_dateC = start_date   #Start and end dates of the comparison period (lagged). (i.e. set 2021-01-01, 2021-12-31 to compare to the period of full year.)
+start_dateC = start_date        #Start and end dates of the comparison period (lagged). (i.e. set 2021-01-01, 2021-12-31 to compare to the period of full year.)
 end_dateC = end_date
 
-Mode="Aggregate" #Choose aggregate or pool. Aggregate := all weeks in the period are summed together. Pool := all weeks/months are pooled for plotting.
+Mode="Aggregate"                #Choose Aggregate or Pool. Aggregate := all weeks in the period are summed together. Pool := all weeks/months are pooled for plotting.
+VMode = "median"                #Vaccination % date selection mode. Possible choices: "first, last, median, mean".
+start_dateV=start_date          #Vaccination % series start and end dates.
+end_dateV=end_date
+lag=0                           #lag (or lead) for pooled data on vaccination series.
+
 
 #Load data:
 #Weekly:
@@ -28,13 +33,14 @@ data5 = pandas.read_csv("Data/Provisional_COVID-19_Deaths_by_Place_of_Death_and_
 data1["Date"]=pandas.to_datetime(data1["Date"])
 data1=data1.sort_values(["Location","Date"]).reset_index(drop=True)
 data1=data1.set_index('Date')
-data1=data1.groupby("Location",as_index=False).resample('W').first().reset_index(drop=False)
+data1=data1.groupby("Location",as_index=False).resample('D').first().reset_index(drop=False)
 data1["Population"]=data1["Series_Complete_Yes"]/data1["Series_Complete_Pop_Pct"]
 data1["Population65+"]=data1["Series_Complete_65Plus"]/data1["Series_Complete_65PlusPop_Pct"]
 data1["Population18+"]=data1["Series_Complete_18Plus"]/data1["Series_Complete_18PlusPop_Pct"]
 A=["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"]
 B=["Alabama","Alaska","Arizona","Arkansas","California","Colorado","Conneticut","Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Lousiana","Maine","Maryland","Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York","North Caarolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Caronlina","South Dakohta","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming"]
-data1["State"]=data1["Location"].replace(dict(zip(A, B)))
+data1["Location"]=data1["Location"].replace(dict(zip(A, B)))
+data1=data1.rename(columns={"Location" : "State"})
 
 
 #Edit data 2 : Covid and non-covid deaths.
@@ -162,13 +168,13 @@ def levelC(data,mode=0):
 if Mode == "Aggregate":
 #Weekly table:
     dataTable=levelC(dataTable)
-    DV=data1[(start_date<=data1["Date"]) & (data1["Date"]<=end_date)].reset_index(drop=True)
-    DV=data1.groupby(["State"],as_index=False).last()  
+    DV=data1[(start_dateV<=data1["Date"]) & (data1["Date"]<=end_dateV)].reset_index(drop=True)
+    DV= eval("DV.groupby(['State'],as_index=False)." +VMode+ "()")
     dataTable=dataTable.merge(DV,on=["State"]).reset_index(drop=True)
     
 #Monthly table:
     dataTableM=levelC(data5)
-    dataTableM=data5[(start_date<=data5["Date"]) & (data5["Date"]<=end_date)].reset_index(drop=True)
+    dataTableM=data5[(pandas.to_datetime(start_date)<=data5["Date"]) & (data5["Date"]<=pandas.to_datetime(end_date))].reset_index(drop=True)
     dataTableM=dataTableM.groupby(["State"],as_index=False).sum()
     dataTableM=dataTableM.merge(DV,on=["State"]).reset_index(drop=True)
     dataTableM=dataTableM.drop(dataTableM.columns[[1]],axis=1)
@@ -176,14 +182,15 @@ if Mode == "Aggregate":
 if Mode == "Pool":
 #Weekly table:
     dataTable=levelC(dataTable,1)
-    DV=data1[(start_date<=data1["Date"]) & (data1["Date"]<=end_date)].reset_index(drop=True)
-    dataTable=dataTable.merge(DV,on=["Date","State"]).reset_index(drop=True)
+    data1.iloc[:,4:]=data1.groupby("State",as_index=False).shift(lag).iloc[:,3:]
+    DV=data1[(pandas.to_datetime(start_dateV)<=data1["Date"]) & (data1["Date"]<=pandas.to_datetime(end_dateV))].reset_index(drop=True)
+    dataTable=dataTable.merge(DV,on=["Date","State"]).set_index("Date").reset_index(drop=True)
 
 #Monthly table:
     dataTableM=levelC(data5,1)
     dataTableM=dataTableM.sort_values(["Date","State"]).reset_index(drop=True)
     DV=DV.sort_values(["Date","State"]).reset_index(drop=True)
-    dataTableM = pandas.merge_asof(dataTableM,DV,on=["Date"],by=["State"],direction="nearest").reset_index(drop=True) 
+    dataTableM = pandas.merge_asof(dataTableM,DV,on=["Date"],by=["State"],direction="nearest").reset_index(drop=True)
     dataTableM=dataTableM.sort_values(["State","Date"]).reset_index(drop=True).set_index("Date").drop(dataTableM.columns[[2,3]],axis=1)
     DV=DV.sort_values(["State","Date"]).reset_index(drop=True)
 
